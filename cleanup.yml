@@ -1,28 +1,32 @@
 - name: Cleanup
-  # TODO: change to remote if you have one
   hosts: local
   become: true
   tasks:
     - name: Remove packages
-      apt:
+      pacman:
         name: "{{ item }}"
         state: absent
       loop: "{{ packages }}"
-    - name: Stop sample.service
+    - name: Stop {{ app_service_name }}
       ansible.builtin.systemd:
-        name: sample.service
+        name: "{{ app_service_name }}"
         state: stopped
-        enabled: no
-    - name: Remove sample.service
+        enabled: false
+    - name: Remove {{ app_service_name }}
       ansible.builtin.file:
-        path: /etc/systemd/system/sample.service
+        path: "/etc/systemd/system/{{ app_service_name }}"
         state: absent
     - name: Reload Systemd
       ansible.builtin.systemd:
-        daemon_reload: yes
+        daemon_reload: true
     - name: Force delete Unit
       ansible.builtin.shell: systemctl reset-failed
     - name: Remove {{ app_dir }}/{{ app_file }}
       ansible.builtin.file:
         path: "{{ app_dir }}/{{ app_file }}"
         state: absent
+    - name: Remove {{ app_user_id }} user
+      ansible.builtin.user:
+        name: "{{ app_user_id }}"
+        state: absent
+        remove: true

@@ -1,22 +1,35 @@
 ---
 - name: Ansible lab
-  # TODO: change to remote if you have one
   hosts: local
   gather_facts: true
 
   tasks:
-    # Use {{ aptcachetime }} variable to specify cache time
-    # Find implementation in https://docs.ansible.com/ansible/latest/collections/ansible/builtin/apt_module.html#examples
+    # Use {{ aptcachetime }} variable to specify cache time 
+    # Find implementation (apt) in https://docs.ansible.com/ansible/latest/collections/ansible/builtin/apt_module.html#examples
+    # Find implementation (pacman) in https://docs.ansible.com/ansible/latest/collections/community/general/pacman_module.html#examples
     - name: Install some basic packages defined in variable "packages"
       become: true
-      apt:
-      # TODO: Your code here
+      pacman:
+        name: "{{ packages }}"
+        state: present
+        update_cache: true
+        # pacman does not support TTL for cache :(
+        # cache_valid_time: "{{ aptcachetime }}"
 
     # Find implementation in https://docs.ansible.com/ansible/latest/collections/ansible/builtin/systemd_module.html#examples
     - name: Enable Nginx service, ensure it is not masked and start it
       become: true
       ansible.builtin.systemd:
-      # TODO: Your code here
+        name: nginx
+        enabled: true
+        masked: false
+        state: started
+    
+    # Find implementation in https://docs.ansible.com/ansible/latest/collections/ansible/builtin/user_module.html#examples
+    - name: Create user for Java App Unit
+      become: true
+      ansible.builtin.user:
+        name: "{{ app_user_id }}"
 
     # Find implementation in https://docs.ansible.com/ansible/latest/collections/ansible/builtin/file_module.html#examples
     # path should be {{ app_dir }}
@@ -25,7 +38,10 @@
     - name: Create {{ app_dir }} directory if it does not exist
       become: true
       ansible.builtin.file:
-      # TODO: Your code here
+        path: "{{ app_dir }}"
+        state: directory
+        owner: "{{ app_user_id }}"
+        mode: '755'
 
     # Find implementation in https://docs.ansible.com/ansible/latest/collections/ansible/builtin/get_url_module.html#examples
     # Download url: https://storage.googleapis.com/devops-practice-files/systemd/ServicesLab-0.0.1.jar
@@ -33,9 +49,14 @@
     # owner should be {{ ansible_user_id }}
     # mode should be 644
     - name: Download Java app to {{ app_dir }}/{{ app_file }}
+      become: true
+      become_user: "{{ app_user_id }}"
       ansible.builtin.get_url:
-      # TODO: Your code here
-
+        url: "{{ app_file_url }}"
+        dest: "{{ app_dir }}/{{ app_file }}"
+        owner: "{{ app_user_id }}"
+        mode: '644'
+    
     # Find implementation in https://docs.ansible.com/ansible/latest/collections/ansible/builtin/template_module.html#examples
     # dest should be /etc/systemd/system/sample.service
     # source is app.service.j2
@@ -48,13 +69,20 @@
       notify:
       - Reload Systemd
       ansible.builtin.template:
-      # TODO: Your code here
+        src: app.service.j2
+        dest: "/etc/systemd/system/{{ app_service_name }}"
+        owner: root
+        group: root
+        mode: '644'
 
     # Find implementation in https://docs.ansible.com/ansible/latest/collections/ansible/builtin/systemd_module.html#examples
-    - name: Enable sample.service, ensure it is not masked and start it
+    - name: Enable {{ app_service_name }}, ensure it is not masked and start it
       become: true
       ansible.builtin.systemd:
-      # TODO: Your code here
+        name: "{{ app_service_name }}"
+        enabled: true
+        masked: false
+        state: started
 
     # Find implementation in https://docs.ansible.com/ansible/latest/collections/ansible/builtin/template_module.html#examples
     # dest should be /etc/nginx/nginx.conf
@@ -65,13 +93,18 @@
     - name: Create a Nginx config
       become: true
       ansible.builtin.template:
-      # TODO: Your code here
+        src: nginx.conf.j2
+        dest: /etc/nginx/nginx.conf
+        owner: root
+        group: root
+        mode: '644'
 
     # Find implementation in https://docs.ansible.com/ansible/latest/collections/ansible/builtin/systemd_module.html#examples
     - name: Restart Nginx
       become: true
       ansible.builtin.systemd:
-      # TODO: Your code here
+        name: nginx
+        state: restarted
   
   handlers:
     # Do a daemon reload
@@ -79,4 +112,4 @@
     - name: Reload Systemd
       become: true
       ansible.builtin.systemd:
-      # TODO: Your code here
+        daemon_reload: true
